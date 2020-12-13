@@ -21,12 +21,14 @@ public class ProcessingUtils
         log.debug("Processing file {}", child.getFileName());
         Calendar calendar = new CalendarBuilder()
                 .build(Files.newInputStream(child));
-        log.debug("Moving file to processed: {}", child.getFileName());
+        log.debug("Moving file to {}: {}", watchProcessingDir.getFileName(),
+                child.getFileName());
         Path processingFile = Files.move(child,
                 watchProcessingDir.resolve(child.getFileName()),
                 StandardCopyOption.REPLACE_EXISTING);
         DatabaseInjector.injectCalFileToDatabase(config, calendar);
-        log.debug("Moving file to done: {}", child.getFileName());
+        log.debug("Moving file to {}: {}", watchOutputDir.getFileName(),
+                child.getFileName());
         Files.move(processingFile,
                 watchOutputDir.resolve(processingFile.getFileName()),
                 StandardCopyOption.REPLACE_EXISTING);
