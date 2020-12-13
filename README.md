@@ -21,6 +21,7 @@ Calendar injection utility to inject the contents of an ICS file into a DBF file
 * The file `sample.ics` should move to the "processing" directory under your `watchBasePath` and start to process
 * The file `sample.ics` should move to the "output" directory under your `watchBasePath` 
 * From there, you can open the `databaseFileName` in a program such as DBF Viewer 2000 and see the added rows from the sample.ics file!
+* The application will continue to watch for additional "input" files until terminated
 
 ## Known issues and enhancements
 * On first edit of the `EVENTS.DBF` file included from the cal 1.04 program, the database record rows do not insert properly

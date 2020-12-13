@@ -57,7 +57,7 @@ public class DatabaseInjector
         log.debug("Calendar Row Contents:");
         Arrays.asList(databaseRow).stream()
                 .forEach(row -> log.debug("Calendar Row: {}", row));
-        log.debug("End Calendar Row Contents:");
+        log.debug("End Calendar Row Contents");
 
         return databaseRow;
     }
