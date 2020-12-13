@@ -10,8 +10,9 @@ Calendar injection utility to inject the contents of an ICS file into a DBF file
 
 ### Configure project
 
-* Edit `cal-inject-prefs.yml` to point to your `databaseFileName`
-* Edit `cal-inject-prefs.yml` to set a `watchPathBase`
+* You can optionally configure the following configuration options:
+  * Edit `cal-inject-prefs.yml` to point to your `databaseFileName`
+  * Edit `cal-inject-prefs.yml` to set a `watchPathBase`
 
 ### Run Project
 
@@ -24,6 +25,7 @@ Calendar injection utility to inject the contents of an ICS file into a DBF file
 ## Known issues and enhancements
 * On first edit of the `EVENTS.DBF` file included from the cal 1.04 program, the database record rows do not insert properly
   * Using DBF Viewer 2000 to remove the bad rows fixes the issues, and from there, the program does generate rows properly
+  * The sample file included in this git repository has been corrected and does not require additional modification
 * log4j configuration needs updated to pick up the log4j.properties file when run as an executable JAR
 * Better configuration to ease generation of executable JAR
 * Better error handling (i.e. should we re-attempt processing files stuck in `processing`?)
