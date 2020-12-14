@@ -23,10 +23,13 @@ shadowJar {
     }
 }
 
-repositories {
-    // Use jcenter for resolving dependencies.
-    // You can declare any Maven/Ivy/file repository here.
-    jcenter()
+allprojects {
+	repositories {
+	    // Use jcenter for resolving dependencies.
+	    // You can declare any Maven/Ivy/file repository here.
+	    jcenter()
+		maven { url 'https://nexus.nuiton.org/nexus/service/local/repositories/thirdparty/content/' }
+	}
 }
 
 dependencies {
@@ -35,7 +38,7 @@ dependencies {
     api 'org.slf4j:slf4j-log4j12:1.7.30'
     api 'org.mnode.ical4j:ical4j:3.0.21'
     api 'org.yaml:snakeyaml:1.11'
-    api 'com.github.albfernandez:javadbf:1.11.2'
+	api 'nl.knaw.dans.common:dans-dbf-lib:1.0.0-beta-10'
 
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     // implementation 'com.google.guava:guava:28.2-jre'

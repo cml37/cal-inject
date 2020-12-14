@@ -1,19 +1,25 @@
 package com.lenderman.calinject.db;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.nio.charset.Charset;
-import java.util.Arrays;
+import java.io.IOException;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.lenderman.calinject.prefs.CalConfiguration;
-import com.linuxense.javadbf.DBFReader;
-import com.linuxense.javadbf.DBFWriter;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.CalendarComponent;
 import net.fortuna.ical4j.model.property.Description;
 import net.fortuna.ical4j.model.property.DtStart;
+import nl.knaw.dans.common.dbflib.BooleanValue;
+import nl.knaw.dans.common.dbflib.DateValue;
+import nl.knaw.dans.common.dbflib.DbfLibException;
+import nl.knaw.dans.common.dbflib.NumberValue;
+import nl.knaw.dans.common.dbflib.Record;
+import nl.knaw.dans.common.dbflib.StringValue;
+import nl.knaw.dans.common.dbflib.Table;
+import nl.knaw.dans.common.dbflib.Value;
 
 public class DatabaseInjector
 {
@@ -79,11 +85,11 @@ public class DatabaseInjector
     //
     // "Memorial Day" is different from the other holidays. It falls on the
     // *last* (WEEK=0) Monday (DOW=1) of May (MONTH=5).
-
-    private static Object[] converCalComponentToDatabaseRow(
+    private static Record converCalComponentToDatabaseRecord(
             CalendarComponent component)
     {
-        Object[] databaseRow = new Object[8];
+
+        Map<String, Value> databaseRow = new HashMap<String, Value>();
 
         DtStart dtstart = component.getProperties()
                 .getProperty(Property.DTSTART);
@@ -95,50 +101,77 @@ public class DatabaseInjector
 
         // TODO incorporate logic from the comments into the below
         // MONTH
-        databaseRow[0] = calendar.get(Calendar.MONTH) + 1;
+        databaseRow.put("MONTH",
+                new NumberValue(calendar.get(Calendar.MONTH) + 1));
 
         // FIXED
-        databaseRow[1] = Boolean.TRUE;
+        databaseRow.put("FIXED", new BooleanValue(Boolean.TRUE));
 
         // DAY
-        databaseRow[2] = calendar.get(Calendar.DAY_OF_MONTH);
+        databaseRow.put("DAY",
+                new NumberValue(calendar.get(Calendar.DAY_OF_MONTH)));
 
         // WEEK
-        databaseRow[3] = calendar.get(Calendar.WEEK_OF_MONTH);
+        databaseRow.put("WEEK",
+                new NumberValue(calendar.get(Calendar.WEEK_OF_MONTH)));
 
         // Day of Week
-        databaseRow[4] = calendar.get(Calendar.DAY_OF_WEEK) - 1;
+        databaseRow.put("DOW",
+                new NumberValue(calendar.get(Calendar.DAY_OF_WEEK) - 1));
 
         // Year
-        databaseRow[5] = 0;
+        databaseRow.put("YEAR", new NumberValue(0));
 
         // Mode
-        databaseRow[6] = "";
+        databaseRow.put("MODE", new StringValue(""));
 
         // Description
-        databaseRow[7] = description.getValue();
+        databaseRow.put("DESC", new StringValue(description.getValue()
+                .substring(0, Math.min(description.getValue().length(), 30))));
+
+        Record record = new Record(databaseRow);
 
         log.debug("Calendar Row Contents:");
-        Arrays.asList(databaseRow).stream()
-                .forEach(row -> log.debug("Calendar Row: {}", row));
+        databaseRow.forEach((k, v) -> {
+            if (v instanceof StringValue)
+            {
+                log.debug("{} => {}", k, record.getStringValue(k));
+            }
+            else if (v instanceof NumberValue)
+            {
+                log.debug("{} => {}", k, record.getNumberValue(k));
+            }
+            else if (v instanceof BooleanValue)
+            {
+                log.debug("{} => {}", k, record.getBooleanValue(k));
+            }
+            else if (v instanceof DateValue)
+            {
+                log.debug("{} => {}", k, record.getDateValue(k));
+            }
+        });
         log.debug("End Calendar Row Contents");
 
-        return databaseRow;
+        return new Record(databaseRow);
     }
 
     public static void injectCalFileToDatabase(CalConfiguration configuration,
             net.fortuna.ical4j.model.Calendar calData) throws Exception
     {
-        DBFReader reader = new DBFReader(
-                new FileInputStream(configuration.getDatabaseFileName()));
-        Charset charset = reader.getCharset();
-        log.debug("Database charset: {}", charset);
-        reader.close();
-        DBFWriter writer = new DBFWriter(
-                new File(configuration.getDatabaseFileName()), charset);
-        calData.getComponents().forEach(component -> writer
-                .addRecord(converCalComponentToDatabaseRow(component)));
+        Table table = new Table(new File(configuration.getDatabaseFileName()));
+        table.open();
+
+        calData.getComponents().forEach(component -> {
+            try
+            {
+                table.addRecord(converCalComponentToDatabaseRecord(component));
+            }
+            catch (IOException | DbfLibException e)
+            {
+                throw new RuntimeException(e);
+            }
+        });
         log.debug("Record written to database");
-        writer.close();
+
     }
 }

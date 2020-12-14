@@ -24,8 +24,4 @@ Calendar injection utility to inject the contents of an ICS file into a DBF file
 * The application will continue to watch for additional "input" files until terminated
 
 ## Known issues and enhancements
-* On first edit of the `EVENTS.DBF` file included from the cal 1.04 program, the database record rows do not insert properly
-  * Using DBF Viewer 2000 to remove the bad rows fixes the issues, and from there, the program does generate rows properly
-  * The sample file included in this git repository has been corrected and does not require additional modification
-* Better configuration to ease generation of executable JAR
 * Better error handling (i.e. should we re-attempt processing files stuck in `processing`?)
