@@ -46,6 +46,7 @@ public class CalFileWatcher
                     continue;
                 }
 
+                @SuppressWarnings("unchecked")
                 WatchEvent<Path> ev = (WatchEvent<Path>) event;
                 Path filename = ev.context();
 
