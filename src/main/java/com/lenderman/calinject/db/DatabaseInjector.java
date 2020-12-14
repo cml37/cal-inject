@@ -99,7 +99,8 @@ public class DatabaseInjector
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(dtstart.getDate());
 
-        // TODO incorporate logic from the comments into the below
+        // TODO incorporate logic from the comments/interface spec above the
+        // method start into the below
         // MONTH
         databaseRow.put("MONTH",
                 new NumberValue(calendar.get(Calendar.MONTH) + 1));
