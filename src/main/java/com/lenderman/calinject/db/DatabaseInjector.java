@@ -2,18 +2,22 @@ package com.lenderman.calinject.db;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.lenderman.calinject.prefs.CalConfiguration;
+import net.fortuna.ical4j.model.Date;
 import net.fortuna.ical4j.model.Property;
+import net.fortuna.ical4j.model.Recur;
 import net.fortuna.ical4j.model.component.CalendarComponent;
 import net.fortuna.ical4j.model.property.Description;
 import net.fortuna.ical4j.model.property.DtStart;
+import net.fortuna.ical4j.model.property.RRule;
 import nl.knaw.dans.common.dbflib.BooleanValue;
-import nl.knaw.dans.common.dbflib.DateValue;
 import nl.knaw.dans.common.dbflib.DbfLibException;
 import nl.knaw.dans.common.dbflib.NumberValue;
 import nl.knaw.dans.common.dbflib.Record;
@@ -26,54 +30,75 @@ public class DatabaseInjector
     // Class Logger
     private static Logger log = LoggerFactory.getLogger(DatabaseInjector.class);
 
-    // Data file format:
+    private static final int MAX_DESCRIPTION_LENGTH = 30;
+
+    // **** Calendar for DOS Data file format ****
     // =================
+
     // Although the format for the events data file(s) are of the general .DBF
     // type, the fields for these must be precisely defined, in a particular
     // order,
     // as follows:
     //
-    // Name Type Length Decimals Description
-    // ----- --------- ------ -------- -----------
-    // MONTH Numeric 2 0 1=Jan, 12=Dec (0=every month if FIXED)
-    // FIXED Logical 1 TRUE if same day every year
-    // DAY Numeric 2 0 1 to 31
-    // WEEK Numeric 1 0 1..6 => week number; 0 = last week
-    // DOW Numeric 1 0 0=Sun, 6=Sat
-    // YEAR Numeric 4 0 MinYear to MaxYear
-    // MODE Character 1 Either blank, "U", or "F".
-    // DESC Character 30 Descriptive text displayed
+
+    /*-
+       Name   Type     Length Decimals Description
+       ----- --------- ------ -------- -----------
+       MONTH  Numeric   2     0        1=Jan, 12=Dec (0=every month if FIXED)
+       FIXED  Logical   1              TRUE if same day every year
+       DAY    Numeric   2     0        1 to 31
+       WEEK   Numeric   1     0        1..6 => week number; 0 = last week
+       DOW    Numeric   1     0        0=Sun, 6=Sat
+       YEAR   Numeric   4     0        MinYear to MaxYear
+       MODE   Character 1              Either blank, "U", or "F".
+       DESC   Character 30             Descriptive text displayed
+    */
+
     //
     // The fields are related as follows:
     //
-    // If "FIXED" is TRUE, then "DAY" must be entered. "WEEK" and "DOW" are
-    // ignored.
+    // Rule #1: If "FIXED" is TRUE, then "DAY" must be entered. "WEEK" and "DOW"
+    // are ignored.
+    // ^^ Implemented
     //
-    // If "FIXED" is FALSE, then "DAY" should usually be zero (0). "WEEK" and
-    // "DOW" must be entered. However, if day is within the range 1-6, the
-    // otherwise resulting date is "incremented" by this much. See "Election
-    // Day" in the sample EVENTS.DBF file for an example of this.
+    // Rule #2: If "FIXED" is FALSE, then "DAY" should usually be zero (0).
+    // "WEEK" and "DOW" must be entered. However, if day is within the range
+    // 1-6, the otherwise resulting date is "incremented" by this much. See
+    // "Election Day" in the sample EVENTS.DBF file for an example of this.
+    // ^^ Not implemented, we are calculating recurrences manually, should
+    // improve here
     //
-    // If "FIXED" is TRUE, and "MONTH" is "0", then the event is highlighted on
-    // the same day every month. A special case is setting "DAY" to "31". Then
-    // the *last* day of each month is highlighted. (Modified)
+    // Rule #3: If "FIXED" is TRUE, and "MONTH" is "0", then the event is
+    // highlighted on the same day every month. A special case is setting "DAY"
+    // to "31". Then the *last* day of each month is highlighted. (Modified)
+    // ^^ Not implemented, we are calculating recurrences manually, should
+    // improve here
     //
-    // If "YEAR" is "0", then the rules for determining the date is applied
-    // every year.
+    // Rule #4: If "YEAR" is "0", then the rules for determining the date is
+    // applied every year.
+    // ^^ Not implemented, we are calculating recurrences manually, should
+    // improve here
     //
-    // If "YEAR" is "2", then the rules for determining the date is applied on
-    // even years only. See "Election Day" in the sample EVENTS.DBF file for an
-    // example of this. (New)
+    // Rule #5: If "YEAR" is "2", then the rules for determining the date is
+    // applied on even years only. See "Election Day" in the sample EVENTS.DBF
+    // file for an example of this. (New)
+    // ^^ Not implemented, we are calculating recurrences manually, should
+    // improve here
     //
-    // If "YEAR" is "3", then the rules for determining the date is applied on
-    // odd years only. (New)
+    // Rule #6: If "YEAR" is "3", then the rules for determining the date is
+    // applied on odd years only. (New)
+    // ^^ Not implemented, we are calculating recurrences manually, should
+    // improve here
     //
-    // If "YEAR" falls within the range MinYear to MaxYear, and "MODE" is either
-    // blank or contains the letter 'U', then this indicates a Unique date.
+    // Rule #7: If "YEAR" falls within the range MinYear to MaxYear, and "MODE"
+    // is either blank or contains the letter 'U', then this indicates a Unique
+    // date.
+    // ^^ Will implement as "blank"
     //
-    // If "YEAR" falls within the range MinYear to MaxYear, and "MODE" contains
-    // the letter 'F', then the rules for determining the date is applied from
-    // this year Forward.
+    // Rule #8: If "YEAR" falls within the range MinYear to MaxYear, and "MODE"
+    // contains the letter 'F', then the rules for determining the date is
+    // applied from this year Forward.
+    // ^^ Not implemented in examples, so no plans to implement
     //
     // Study the sample EVENTS.DBF file to see how events are defined.
     //
@@ -85,50 +110,43 @@ public class DatabaseInjector
     //
     // "Memorial Day" is different from the other holidays. It falls on the
     // *last* (WEEK=0) Monday (DOW=1) of May (MONTH=5).
-    private static Record converCalComponentToDatabaseRecord(
-            CalendarComponent component)
-    {
+    //
+    //
 
+    private static Record createDatabaseRecord(Calendar calendar,
+            Description description)
+    {
         Map<String, Value> databaseRow = new HashMap<String, Value>();
 
-        DtStart dtstart = component.getProperties()
-                .getProperty(Property.DTSTART);
-        Description description = component.getProperties()
-                .getProperty(Property.DESCRIPTION);
+        // All events are fixed in our implementation
+        databaseRow.put("FIXED", new BooleanValue(Boolean.TRUE));
 
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(dtstart.getDate());
+        // DAY OF WEEK (always zero since we used fixed dates)
+        databaseRow.put("DOW", new NumberValue(0));
 
-        // TODO incorporate logic from the comments/interface spec above the
-        // method start into the below
+        // WEEK (always zero since we used fixed dates)
+        databaseRow.put("WEEK", new NumberValue(0));
+
         // MONTH
         databaseRow.put("MONTH",
                 new NumberValue(calendar.get(Calendar.MONTH) + 1));
-
-        // FIXED
-        databaseRow.put("FIXED", new BooleanValue(Boolean.TRUE));
 
         // DAY
         databaseRow.put("DAY",
                 new NumberValue(calendar.get(Calendar.DAY_OF_MONTH)));
 
-        // WEEK
-        databaseRow.put("WEEK",
-                new NumberValue(calendar.get(Calendar.WEEK_OF_MONTH)));
-
-        // Day of Week
-        databaseRow.put("DOW",
-                new NumberValue(calendar.get(Calendar.DAY_OF_WEEK) - 1));
-
         // Year
-        databaseRow.put("YEAR", new NumberValue(0));
+        databaseRow.put("YEAR", new NumberValue(calendar.get(Calendar.YEAR)));
 
-        // Mode
+        // Mode - Unique Date
         databaseRow.put("MODE", new StringValue(""));
 
         // Description
-        databaseRow.put("DESC", new StringValue(description.getValue()
-                .substring(0, Math.min(description.getValue().length(), 30))));
+        databaseRow.put("DESC",
+                new StringValue(description == null ? ""
+                        : description.getValue().substring(0,
+                                Math.min(description.getValue().length(),
+                                        MAX_DESCRIPTION_LENGTH))));
 
         Record record = new Record(databaseRow);
 
@@ -146,14 +164,67 @@ public class DatabaseInjector
             {
                 log.debug("{} => {}", k, record.getBooleanValue(k));
             }
-            else if (v instanceof DateValue)
-            {
-                log.debug("{} => {}", k, record.getDateValue(k));
-            }
         });
         log.debug("End Calendar Row Contents");
 
         return new Record(databaseRow);
+    }
+
+    private static List<Record> converCalComponentToDatabaseRecord(
+            CalendarComponent component, int recurringEventNumberOfYears)
+    {
+        List<Record> recordList = new ArrayList<Record>();
+
+        DtStart dtstart = component.getProperties()
+                .getProperty(Property.DTSTART);
+
+        if (dtstart != null)
+        {
+            RRule rrule = component.getProperties().getProperty(Property.RRULE);
+            Recur recurrence = null;
+            if (rrule != null)
+            {
+                recurrence = rrule.getRecur();
+            }
+
+            Description description = component.getProperties()
+                    .getProperty(Property.DESCRIPTION);
+
+            Calendar startDate = Calendar.getInstance();
+            startDate.setTime(dtstart.getDate());
+
+            // Rule #1 & Rule #7 Implementation
+            if (recurrence == null)
+            {
+                recordList.add(createDatabaseRecord(startDate, description));
+            }
+            // We are taking the easy way out and not using the recurrence
+            // concept
+            // in the DBF format specified.
+            // Instead, we are calculating dates for a period of years as
+            // defined by
+            // the configuration file.
+            else
+            {
+                // Get all dates starting with the start date as specified by
+                // recurringEventNumberOfYears years
+                Calendar endRecurrence = Calendar.getInstance();
+                endRecurrence.setTime(dtstart.getDate());
+                endRecurrence.add(Calendar.YEAR, recurringEventNumberOfYears);
+
+                Calendar tempCalendar = Calendar.getInstance();
+
+                recurrence
+                        .getDates(new Date(startDate), new Date(endRecurrence),
+                                net.fortuna.ical4j.model.parameter.Value.DATE)
+                        .forEach(date -> {
+                            tempCalendar.setTime(date);
+                            recordList.add(createDatabaseRecord(tempCalendar,
+                                    description));
+                        });
+            }
+        }
+        return recordList;
     }
 
     public static void injectCalFileToDatabase(CalConfiguration configuration,
@@ -163,16 +234,20 @@ public class DatabaseInjector
         table.open();
 
         calData.getComponents().forEach(component -> {
-            try
-            {
-                table.addRecord(converCalComponentToDatabaseRecord(component));
-            }
-            catch (IOException | DbfLibException e)
-            {
-                throw new RuntimeException(e);
-            }
+            converCalComponentToDatabaseRecord(component,
+                    configuration.getRecurringEventNumberOfYears())
+                            .forEach(record -> {
+                                try
+                                {
+                                    table.addRecord(record);
+                                    log.debug("Record written to database");
+                                }
+                                catch (IOException | DbfLibException e)
+                                {
+                                    throw new RuntimeException(e);
+                                }
+                            });
         });
-        log.debug("Record written to database");
-
+        table.close();
     }
 }

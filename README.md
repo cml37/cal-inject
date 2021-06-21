@@ -13,6 +13,7 @@ Calendar injection utility to inject the contents of an ICS file into a DBF file
 * You can optionally configure the following configuration options:
   * Edit `cal-inject-prefs.yml` to point to your `databaseFileName`
   * Edit `cal-inject-prefs.yml` to set a `watchPathBase`
+  * Edit `cal-inject-prefs.yml` to set the `recurringEventNumberOfYears` which specifies how many years of recurring events will be created for recurring events without an end date
 
 ### Run Project
 
@@ -26,5 +27,4 @@ Calendar injection utility to inject the contents of an ICS file into a DBF file
 ## Known issues and enhancements
 * Better error handling (i.e. should we re-attempt processing files stuck in `processing`?)
 * Make some decisioning on how we handle recurring events.
-  * Currently all events are fixed and are recurring each year.
-  * Perhaps add some user configurable options for the YAML config file that indicate the strategy for converting events.
+    * We are not taking advantage of the recurrence for cal for DOS, but instead are setting recurring dates as static dates

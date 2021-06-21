@@ -39,10 +39,8 @@ public class CalInjectMain
         watchProcessingDir.toFile().mkdirs();
         watchOutputDir.toFile().mkdirs();
 
-        // process any files that were already present before we started this
+        // Process any files that were already present before we started this
         // program
-        // TODO: Should we process files stuck in the "processing" directory
-        // too?
         Files.walk(watchInputDir).filter(Files::isRegularFile).forEach(path -> {
             try
             {
