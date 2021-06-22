@@ -170,7 +170,7 @@ public class DatabaseInjector
         return new Record(databaseRow);
     }
 
-    private static List<Record> converCalComponentToDatabaseRecord(
+    private static List<Record> convertCalComponentToDatabaseRecord(
             CalendarComponent component, int recurringEventNumberOfYears)
     {
         List<Record> recordList = new ArrayList<Record>();
@@ -199,11 +199,9 @@ public class DatabaseInjector
                 recordList.add(createDatabaseRecord(startDate, description));
             }
             // We are taking the easy way out and not using the recurrence
-            // concept
-            // in the DBF format specified.
+            // concept in the DBF format specified.
             // Instead, we are calculating dates for a period of years as
-            // defined by
-            // the configuration file.
+            // defined by the configuration file.
             else
             {
                 // Get all dates starting with the start date as specified by
@@ -234,7 +232,7 @@ public class DatabaseInjector
         table.open();
 
         calData.getComponents().forEach(component -> {
-            converCalComponentToDatabaseRecord(component,
+            convertCalComponentToDatabaseRecord(component,
                     configuration.getRecurringEventNumberOfYears())
                             .forEach(record -> {
                                 try
